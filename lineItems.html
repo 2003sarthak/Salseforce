@@ -1,0 +1,226 @@
+<template>
+    <lightning-card>
+
+        <!-- Header -->
+        <div class="slds-p-around_small">
+            <div class="slds-text-heading_small">
+                <b>Line Items</b>
+            </div>
+            <div class="slds-m-vertical_small">
+                {totalLineItems} items
+            </div>
+        </div>
+
+        <!-- Table Wrapper -->
+        <div class="table-wrapper">
+            <table class="resizable-table" data-id="mainTable">
+
+                <!-- Column Width Definitions -->
+                <colgroup>
+                    <col data-col="0"  style="width: 50px"/>   <!-- # -->
+                    <col data-col="1"  style="width: 130px"/>  <!-- Line Item ID -->
+                    <col data-col="2"  style="width: 130px"/>  <!-- Product -->
+                    <col data-col="3"  style="width: 110px"/>  <!-- Unit Price -->
+                    <col data-col="4"  style="width: 90px"/>   <!-- Quantity -->
+                    <col data-col="5"  style="width: 110px"/>  <!-- Net Value -->
+                    <col data-col="6"  style="width: 120px"/>  <!-- Dimension 1 -->
+                    <col data-col="7"  style="width: 120px"/>  <!-- Dimension 2 -->
+                    <col data-col="8"  style="width: 120px"/>  <!-- Dimension 4 -->
+                    <col data-col="9"  style="width: 120px"/>  <!-- Milestone -->
+                    <col data-col="10" style="width: 150px"/>  <!-- Line Description -->
+                    <col data-col="11" style="width: 100px"/>  <!-- Tax Code -->
+                    <col data-col="12" style="width: 90px"/>   <!-- Tax Rate -->
+                    <col data-col="13" style="width: 110px"/>  <!-- Tax Value -->
+                    <col data-col="14" style="width: 140px"/>  <!-- Billing Event Item -->
+                </colgroup>
+
+                <!-- Table Header -->
+                <thead>
+                    <tr class="slds-line-height_reset">
+
+                        <th scope="col" data-col-index="0">
+                            <div class="th-content" title="#">#</div>
+                            <div class="col-resizer" data-col-index="0"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="1">
+                            <div class="th-content" title="Line Item ID">Line Item ID</div>
+                            <div class="col-resizer" data-col-index="1"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="2">
+                            <div class="th-content" title="Product">Product</div>
+                            <div class="col-resizer" data-col-index="2"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="3">
+                            <div class="th-content" title="Unit Price">Unit Price</div>
+                            <div class="col-resizer" data-col-index="3"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="4">
+                            <div class="th-content" title="Quantity">Quantity</div>
+                            <div class="col-resizer" data-col-index="4"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="5">
+                            <div class="th-content" title="Net Value">Net Value</div>
+                            <div class="col-resizer" data-col-index="5"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="6">
+                            <div class="th-content" title="Dimension 1">Dimension 1</div>
+                            <div class="col-resizer" data-col-index="6"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="7">
+                            <div class="th-content" title="Dimension 2">Dimension 2</div>
+                            <div class="col-resizer" data-col-index="7"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="8">
+                            <div class="th-content" title="Dimension 4">Dimension 4</div>
+                            <div class="col-resizer" data-col-index="8"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="9">
+                            <div class="th-content" title="Milestone">Milestone</div>
+                            <div class="col-resizer" data-col-index="9"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="10">
+                            <div class="th-content" title="Line Description">Line Description</div>
+                            <div class="col-resizer" data-col-index="10"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="11">
+                            <div class="th-content" title="Tax Code">Tax Code</div>
+                            <div class="col-resizer" data-col-index="11"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="12">
+                            <div class="th-content" title="Tax Rate">Tax Rate</div>
+                            <div class="col-resizer" data-col-index="12"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="13">
+                            <div class="th-content" title="Tax Value">Tax Value</div>
+                            <div class="col-resizer" data-col-index="13"></div>
+                        </th>
+
+                        <th scope="col" data-col-index="14">
+                            <div class="th-content" title="Billing Event Item">Billing Event Item</div>
+                            <div class="col-resizer" data-col-index="14"></div>
+                        </th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <!-- Dynamic Data Rows -->
+                    <template for:each={data} for:item="row">
+                        <tr key={row.Id} class="slds-hint-parent">
+
+                            <td title={row.serialNumber}>
+                                {row.serialNumber}
+                            </td>
+
+                            <td title={row.Name}>
+                                <a href={row.url} target="_blank">{row.Name}</a>
+                            </td>
+
+                            <td title={row.productName}>
+                                <template if:true={row.productUrl}>
+                                    <a href={row.productUrl} target="_blank">{row.productName}</a>
+                                </template>
+                                <template if:false={row.productUrl}>-</template>
+                            </td>
+
+                            <td title={row.c2g__UnitPrice__c}>
+                                {row.c2g__UnitPrice__c}
+                            </td>
+
+                            <td title={row.c2g__Quantity__c}>
+                                {row.c2g__Quantity__c}
+                            </td>
+
+                            <td title={row.c2g__NetValue__c}>
+                                {row.c2g__NetValue__c}
+                            </td>
+
+                            <td title={row.dim1}>
+                                <template if:true={row.dim1Url}>
+                                    <a href={row.dim1Url} target="_blank">{row.dim1}</a>
+                                </template>
+                                <template if:false={row.dim1Url}>-</template>
+                            </td>
+
+                            <td title={row.dim2}>
+                                <template if:true={row.dim2Url}>
+                                    <a href={row.dim2Url} target="_blank">{row.dim2}</a>
+                                </template>
+                                <template if:false={row.dim2Url}>-</template>
+                            </td>
+
+                            <td title={row.dim4}>
+                                <template if:true={row.dim4Url}>
+                                    <a href={row.dim4Url} target="_blank">{row.dim4}</a>
+                                </template>
+                                <template if:false={row.dim4Url}>-</template>
+                            </td>
+
+                            <td title={row.milestone}>
+                                <template if:true={row.milestoneUrl}>
+                                    <a href={row.milestoneUrl} target="_blank">{row.milestone}</a>
+                                </template>
+                                <template if:false={row.milestoneUrl}>-</template>
+                            </td>
+
+                            <td title={row.c2g__LineDescription__c}>
+                                {row.c2g__LineDescription__c}
+                            </td>
+
+                            <td title={row.taxCode}>
+                                {row.taxCode}
+                            </td>
+
+                            <td title={row.c2g__TaxRate1__c}>
+                                {row.c2g__TaxRate1__c}
+                            </td>
+
+                            <td title={row.c2g__TaxValue1__c}>
+                                {row.c2g__TaxValue1__c}
+                            </td>
+
+                            <td title={row.billingItem}>
+                                {row.billingItem}
+                            </td>
+
+                        </tr>
+                    </template>
+
+                    <!-- Totals Row -->
+                    <tr class="totals-row">
+                        <td></td>
+                        <td title="Subtotals"><b>Subtotals</b></td>
+                        <td></td>
+                        <td title={totals.totalUnitPrice}><b>{totals.totalUnitPrice}</b></td>
+                        <td title={totals.totalQty}><b>{totals.totalQty}</b></td>
+                        <td title={totals.totalNet}><b>{totals.totalNet}</b></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td title={totals.totalTaxRate}><b>{totals.totalTaxRate}</b></td>
+                        <td title={totals.totalTaxValue}><b>{totals.totalTaxValue}</b></td>
+                        <td></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+    </lightning-card>
+</template>

@@ -1,0 +1,170 @@
+/* ==========================================
+   TABLE WRAPPER
+   ========================================== */
+
+.table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    position: relative;
+}
+
+/* ==========================================
+   TABLE BASE
+   ========================================== */
+
+.resizable-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+/* ==========================================
+   ALL CELLS
+   ========================================== */
+
+.resizable-table thead tr th,
+.resizable-table tbody tr td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+    padding: 8px 10px;
+    text-align: left;
+    border: 1px solid #dddbda;
+    height: 32px;
+    line-height: 1.5;
+    position: relative; /* needed for resizer positioning */
+}
+
+/* ==========================================
+   HEADER
+   ========================================== */
+
+.resizable-table thead tr th {
+    background-color: #f3f3f3;
+    font-weight: bold;
+    font-size: 12px;
+    color: #3e3e3c;
+    border-bottom: 2px solid #dddbda;
+    /* padding-right keeps text from going
+       under the resizer handle */
+    padding-right: 16px;
+}
+
+/* th-content holds the label text
+   separate from the resizer div */
+.resizable-table thead tr th .th-content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+/* ==========================================
+   COLUMN RESIZER HANDLE
+   ========================================== */
+
+.col-resizer {
+    /* Position at right edge of each th */
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+
+    /* Default state - invisible but present */
+    background-color: transparent;
+
+    /* col-resize cursor shows resize arrows */
+    cursor: col-resize;
+
+    /* Smooth transition for hover effect */
+    transition: background-color 0.2s ease;
+
+    /* Sits on top of everything */
+    z-index: 1;
+
+    /* Center the visual indicator */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Hover state - show blue line */
+.col-resizer:hover {
+    background-color: #0176d3;
+    width: 4px;
+    right: 0;
+}
+
+/* Active/dragging state - darker blue */
+.col-resizer.resizing {
+    background-color: #014486;
+    width: 4px;
+}
+
+/* ==========================================
+   BODY ROWS
+   ========================================== */
+
+.resizable-table tbody tr td {
+    font-size: 13px;
+    color: #080707;
+    vertical-align: middle;
+}
+
+/* Alternating row colors */
+.resizable-table tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.resizable-table tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* Row hover */
+.resizable-table tbody tr:hover td {
+    background-color: #e8f0fe;
+    cursor: default;
+}
+
+/* ==========================================
+   LINKS INSIDE CELLS
+   ========================================== */
+
+.resizable-table tbody tr td a {
+    color: #0176d3;
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.resizable-table tbody tr td a:hover {
+    text-decoration: underline;
+    color: #014486;
+}
+
+/* ==========================================
+   TOTALS ROW
+   ========================================== */
+
+.resizable-table tbody tr.totals-row,
+.resizable-table tbody tr.totals-row:nth-child(even),
+.resizable-table tbody tr.totals-row:nth-child(odd) {
+    background-color: #e8f4e8;
+}
+
+.resizable-table tbody tr.totals-row td {
+    font-weight: bold;
+    font-size: 13px;
+    color: #1a1a1a;
+    border-top: 2px solid #2e7d32;
+}
+
+.resizable-table tbody tr.totals-row:hover td {
+    background-color: #d4edda;
+    cursor: default;
+}
