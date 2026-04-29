@@ -6,9 +6,14 @@ export default class LineItemsPanel extends LightningElement {
     @api recordId;
 
     @track data = [];
-    @track columns = [];
 
-    totals = {};
+    totals = {
+        totalUnitPrice: 0,
+        totalQty: 0,
+        totalNet: 0,
+        totalTaxRate: 0,
+        totalTaxValue: 0
+    };
 
     // ==========================================
     // COLUMN RESIZE PROPERTIES
@@ -30,42 +35,31 @@ export default class LineItemsPanel extends LightningElement {
     @wire(getLineItems, { invoiceId: '$recordId' })
     wiredData({ data, error }) {
         if (data) {
-            // Store columns metadata
-            this.columns = data.columns;
+            this.data = data.items.map((row, index) => ({
+                ...row,
+                serialNumber: index + 1,
+                url: '/' + row.Id,
+                productUrl: row.c2g__Product__c ? '/' + row.c2g__Product__c : null,
+                productName: row.c2g__Product__r?.Name,
+                dim1Url: row.c2g__Dimension1__c ? '/' + row.c2g__Dimension1__c : null,
+                dim1: row.c2g__Dimension1__r?.Name,
+                dim2Url: row.c2g__Dimension2__c ? '/' + row.c2g__Dimension2__c : null,
+                dim2: row.c2g__Dimension2__r?.Name,
+                dim4Url: row.c2g__Dimension4__c ? '/' + row.c2g__Dimension4__c : null,
+                dim4: row.c2g__Dimension4__r?.Name,
+                milestoneUrl: row.Milestone__c ? '/' + row.Milestone__c : null,
+                milestone: row.Milestone__r?.Name,
+                taxCode: row.c2g__TaxCode1__r?.Name,
+                billingItem: row.ffpsai__BillingEventItem__r?.Name
+            }));
 
-            // Transform rows - add computed fields for URLs and display values
-            this.data = data.items.map((row, index) => {
-                let transformedRow = {
-                    ...row,
-                    serialNumber: index + 1,
-                    url: '/' + row.Id
-                };
-
-                // Add URL and display name fields for common reference fields
-                // This preserves the link functionality
-                transformedRow.productUrl = row.c2g__Product__c ? '/' + row.c2g__Product__c : null;
-                transformedRow.productName = row.c2g__Product__r?.Name;
-                
-                transformedRow.dim1Url = row.c2g__Dimension1__c ? '/' + row.c2g__Dimension1__c : null;
-                transformedRow.dim1 = row.c2g__Dimension1__r?.Name;
-                
-                transformedRow.dim2Url = row.c2g__Dimension2__c ? '/' + row.c2g__Dimension2__c : null;
-                transformedRow.dim2 = row.c2g__Dimension2__r?.Name;
-                
-                transformedRow.dim4Url = row.c2g__Dimension4__c ? '/' + row.c2g__Dimension4__c : null;
-                transformedRow.dim4 = row.c2g__Dimension4__r?.Name;
-                
-                transformedRow.milestoneUrl = row.Milestone__c ? '/' + row.Milestone__c : null;
-                transformedRow.milestone = row.Milestone__r?.Name;
-                
-                transformedRow.taxCode = row.c2g__TaxCode1__r?.Name;
-                transformedRow.billingItem = row.ffpsai__BillingEventItem__r?.Name;
-
-                return transformedRow;
-            });
-
-            // Populate totals object from response
-            this.totals = data.totals || {};
+            this.totals = {
+                totalUnitPrice: data.totalUnitPrice,
+                totalQty: data.totalQty,
+                totalNet: data.totalNet,
+                totalTaxRate: data.totalTaxRate,
+                totalTaxValue: data.totalTaxValue
+            };
 
         } else if (error) {
             console.error('Error fetching data:', error);
@@ -188,43 +182,6 @@ export default class LineItemsPanel extends LightningElement {
         document.removeEventListener('mouseup',   this._boundMouseUp);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-    }
-
-    // ==========================================
-    // GETTER - Get cell value dynamically
-    // ==========================================
-    getCellValue(row, apiName) {
-        // Handle special computed fields for URLs and display names
-        if (apiName === 'c2g__Product__r.Name') return row.productName;
-        if (apiName === 'c2g__Dimension1__r.Name') return row.dim1;
-        if (apiName === 'c2g__Dimension2__r.Name') return row.dim2;
-        if (apiName === 'c2g__Dimension4__r.Name') return row.dim4;
-        if (apiName === 'Milestone__r.Name') return row.milestone;
-        if (apiName === 'c2g__TaxCode1__r.Name') return row.taxCode;
-        if (apiName === 'ffpsai__BillingEventItem__r.Name') return row.billingItem;
-        
-        // For regular fields, get the value
-        return row[apiName];
-    }
-
-    // ==========================================
-    // GETTER - Get URL for reference fields
-    // ==========================================
-    getCellUrl(row, apiName) {
-        if (apiName === 'c2g__Product__c') return row.productUrl;
-        if (apiName === 'c2g__Dimension1__c') return row.dim1Url;
-        if (apiName === 'c2g__Dimension2__c') return row.dim2Url;
-        if (apiName === 'c2g__Dimension4__c') return row.dim4Url;
-        if (apiName === 'Milestone__c') return row.milestoneUrl;
-        return null;
-    }
-
-    // ==========================================
-    // GETTER - Check if field is a reference that needs URL
-    // ==========================================
-    isReferenceField(apiName) {
-        return ['c2g__Product__c', 'c2g__Dimension1__c', 'c2g__Dimension2__c', 
-                'c2g__Dimension4__c', 'Milestone__c', 'Id', 'Name'].includes(apiName);
     }
 
     // ==========================================
