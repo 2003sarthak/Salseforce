@@ -1,267 +1,236 @@
 import { LightningElement, api, wire, track } from 'lwc';
-import getLineItems     from '@salesforce/apex/SalesInvoiceLineItemController.getLineItems';
-import getFieldSetFields from '@salesforce/apex/SalesInvoiceLineItemController.getFieldSetFields';
-
-// ============================================================
-// FIELD METADATA MAP
-// Defines label, render type, link keys, and total key
-// for every known field this component can display.
-// Fields NOT in this map fall back to plain text rendering.
-// ============================================================
-const FIELD_META = {
-    'c2g__Product__c':             { label: 'Product',            type: 'link',   hrefKey: 'productUrl',   displayKey: 'productName' },
-    'c2g__UnitPrice__c':           { label: 'Unit Price',         type: 'number', totalKey: 'totalUnitPrice'                          },
-    'c2g__Quantity__c':            { label: 'Quantity',           type: 'number', totalKey: 'totalQty'                                },
-    'c2g__NetValue__c':            { label: 'Net Value',          type: 'number', totalKey: 'totalNet'                                },
-    'c2g__Dimension1__c':          { label: 'Dimension 1',        type: 'link',   hrefKey: 'dim1Url',      displayKey: 'dim1'        },
-    'c2g__Dimension2__c':          { label: 'Dimension 2',        type: 'link',   hrefKey: 'dim2Url',      displayKey: 'dim2'        },
-    'c2g__Dimension4__c':          { label: 'Dimension 4',        type: 'link',   hrefKey: 'dim4Url',      displayKey: 'dim4'        },
-    'Milestone__c':                { label: 'Milestone',          type: 'link',   hrefKey: 'milestoneUrl', displayKey: 'milestone'   },
-    'c2g__LineDescription__c':     { label: 'Line Description',   type: 'text'                                                       },
-    'c2g__TaxCode1__c':            { label: 'Tax Code',           type: 'text',                            displayKey: 'taxCode'     },
-    'c2g__TaxRate1__c':            { label: 'Tax Rate',           type: 'number', totalKey: 'totalTaxRate'                           },
-    'c2g__TaxValue1__c':           { label: 'Tax Value',          type: 'number', totalKey: 'totalTaxValue'                          },
-    'ffpsai__BillingEventItem__c': { label: 'Billing Event Item', type: 'text',                            displayKey: 'billingItem' }
-};
+import getLineItems from '@salesforce/apex/SalesInvoiceLineItemController.getLineItems';
 
 export default class LineItemsPanel extends LightningElement {
 
     @api recordId;
 
-    // ── Three tracked arrays that drive the HTML ──────────────
-    @track columnDefs = [];   // header row  → {label, colIndex, ...}
-    @track tableData  = [];   // data rows   → {id, cells: [...]}
-    @track totalCells = [];   // totals row  → {key, hasTotal, isLabel, value}
+    @track data = [];
+    @track columns = [];
 
-    // ── Raw cache from wires ──────────────────────────────────
-    _rawFields = null;
-    _rawItems  = null;
+    totals = {};
 
-    // ── Internal totals object ────────────────────────────────
-    _totals = { totalUnitPrice: 0, totalQty: 0, totalNet: 0, totalTaxRate: 0, totalTaxValue: 0 };
+    // ==========================================
+    // COLUMN RESIZE PROPERTIES
+    // ==========================================
+    _isResizing       = false;   // drag in progress flag
+    _startX           = 0;       // mouse X when drag started
+    _startWidth       = 0;       // column width when drag started
+    _activeColIndex   = null;    // which column is being dragged
+    _cols             = null;    // reference to <col> elements
 
-    // ── Resize state ──────────────────────────────────────────
-    _isResizing      = false;
-    _startX          = 0;
-    _startWidth      = 0;
-    _activeColIndex  = null;
-    _cols            = null;
-    _boundMouseMove  = null;
-    _boundMouseUp    = null;
-    _resizeReady     = false;
+    // Bound versions of handlers
+    // needed so we can removeEventListener later
+    _boundMouseMove   = null;
+    _boundMouseUp     = null;
 
-    // ============================================================
-    // WIRE 1 — Dynamic field set column list
-    // ============================================================
-    @wire(getFieldSetFields)
-    wiredFields({ data, error }) {
-        if (data) {
-            this._rawFields = data;
-            this._refresh();
-        } else if (error) {
-            console.error('Error fetching field set fields:', error);
-        }
-    }
-
-    // ============================================================
-    // WIRE 2 — Line items (plain List<SObject>)
-    // ============================================================
+    // ==========================================
+    // WIRE - FETCH DATA
+    // ==========================================
     @wire(getLineItems, { invoiceId: '$recordId' })
     wiredData({ data, error }) {
         if (data) {
-            console.log('Raw data from Apex:', JSON.stringify(data));
-            this._rawItems = data;
-            this._refresh();
+            // Store columns metadata
+            this.columns = data.columns;
+
+            // Transform rows - add computed fields for URLs and display values
+            this.data = data.items.map((row, index) => {
+                let transformedRow = {
+                    ...row,
+                    serialNumber: index + 1,
+                    url: '/' + row.Id
+                };
+
+                // Add URL and display name fields for common reference fields
+                // This preserves the link functionality
+                transformedRow.productUrl = row.c2g__Product__c ? '/' + row.c2g__Product__c : null;
+                transformedRow.productName = row.c2g__Product__r?.Name;
+                
+                transformedRow.dim1Url = row.c2g__Dimension1__c ? '/' + row.c2g__Dimension1__c : null;
+                transformedRow.dim1 = row.c2g__Dimension1__r?.Name;
+                
+                transformedRow.dim2Url = row.c2g__Dimension2__c ? '/' + row.c2g__Dimension2__c : null;
+                transformedRow.dim2 = row.c2g__Dimension2__r?.Name;
+                
+                transformedRow.dim4Url = row.c2g__Dimension4__c ? '/' + row.c2g__Dimension4__c : null;
+                transformedRow.dim4 = row.c2g__Dimension4__r?.Name;
+                
+                transformedRow.milestoneUrl = row.Milestone__c ? '/' + row.Milestone__c : null;
+                transformedRow.milestone = row.Milestone__r?.Name;
+                
+                transformedRow.taxCode = row.c2g__TaxCode1__r?.Name;
+                transformedRow.billingItem = row.ffpsai__BillingEventItem__r?.Name;
+
+                return transformedRow;
+            });
+
+            // Populate totals object from response
+            this.totals = data.totals || {};
+
         } else if (error) {
-            console.error('Error fetching line items:', error);
+            console.error('Error fetching data:', error);
         }
     }
 
-    // ============================================================
-    // _refresh — called by both wires.
-    // Waits until BOTH have resolved, then builds all three
-    // tracked arrays in one shot so the HTML re-renders once.
-    // ============================================================
-    _refresh() {
-        if (!this._rawFields || !this._rawItems) return;
-
-        // 1 — Build column definitions
-        this.columnDefs = this._buildColumnDefs(this._rawFields);
-
-        // 2 — Enrich raw items (add computed helper props for links)
-        const rows = this._rawItems.map((row, idx) => ({
-            ...row,
-            serialNumber: idx + 1,
-            url:          '/' + row.Id,
-            productUrl:   row.c2g__Product__c   ? '/' + row.c2g__Product__c   : null,
-            productName:  row.c2g__Product__r?.Name,
-            dim1Url:      row.c2g__Dimension1__c ? '/' + row.c2g__Dimension1__c : null,
-            dim1:         row.c2g__Dimension1__r?.Name,
-            dim2Url:      row.c2g__Dimension2__c ? '/' + row.c2g__Dimension2__c : null,
-            dim2:         row.c2g__Dimension2__r?.Name,
-            dim4Url:      row.c2g__Dimension4__c ? '/' + row.c2g__Dimension4__c : null,
-            dim4:         row.c2g__Dimension4__r?.Name,
-            milestoneUrl: row.Milestone__c        ? '/' + row.Milestone__c        : null,
-            milestone:    row.Milestone__r?.Name,
-            taxCode:      row.c2g__TaxCode1__r?.Name,
-            billingItem:  row.ffpsai__BillingEventItem__r?.Name
-        }));
-
-        // 3 — Compute totals in JS from the items
-        this._totals = {
-            totalUnitPrice: rows.reduce((s, r) => s + (r.c2g__UnitPrice__c  || 0), 0),
-            totalQty:       rows.reduce((s, r) => s + (r.c2g__Quantity__c   || 0), 0),
-            totalNet:       rows.reduce((s, r) => s + (r.c2g__NetValue__c   || 0), 0),
-            totalTaxRate:   rows.reduce((s, r) => s + (r.c2g__TaxRate1__c   || 0), 0),
-            totalTaxValue:  rows.reduce((s, r) => s + (r.c2g__TaxValue1__c  || 0), 0)
-        };
-
-        // 4 — Build table rows: each row has a pre-resolved cells array
-        this.tableData = rows.map(row => ({
-            id:    row.Id,
-            cells: this._buildRowCells(row, this.columnDefs)
-        }));
-
-        // 5 — Build totals row cells
-        this.totalCells = this._buildTotalCells(this.columnDefs);
-
-        // Reset resize so renderedCallback re-attaches on the new cols
-        this._resizeReady = false;
-    }
-
-    // ============================================================
-    // _buildColumnDefs
-    // Always-first: # and Line Item ID
-    // Then: one col per field set field
-    // ============================================================
-    _buildColumnDefs(fieldSetFields) {
-        const cols = [
-            { label: '#',            apiName: 'serialNumber', colIndex: 0, type: 'text', hasTotal: false, hrefKey: null, displayKey: null, totalKey: null },
-            { label: 'Line Item ID', apiName: 'Name',         colIndex: 1, type: 'link', hasTotal: false, hrefKey: 'url', displayKey: null, totalKey: null }
-        ];
-
-        fieldSetFields.forEach((apiName, i) => {
-            const meta = FIELD_META[apiName] || {};
-            cols.push({
-                label:      meta.label      || this._apiToLabel(apiName),
-                apiName,
-                colIndex:   i + 2,
-                type:       meta.type       || 'text',
-                hrefKey:    meta.hrefKey    || null,
-                displayKey: meta.displayKey || null,
-                totalKey:   meta.totalKey   || null,
-                hasTotal:   !!meta.totalKey
-            });
-        });
-
-        return cols;
-    }
-
-    // ============================================================
-    // _buildRowCells
-    // For each column returns {key, isLink, href, display}
-    // ============================================================
-    _buildRowCells(row, cols) {
-        return cols.map(col => {
-            if (col.type === 'link') {
-                const href    = col.hrefKey    ? row[col.hrefKey]    : null;
-                const display = col.displayKey ? row[col.displayKey] : row[col.apiName];
-                return { key: col.colIndex, isLink: !!href, href, display: display ?? '-' };
-            }
-            const val = row[col.apiName];
-            return { key: col.colIndex, isLink: false, href: null, display: val != null ? val : '-' };
-        });
-    }
-
-    // ============================================================
-    // _buildTotalCells
-    // idx 0 → empty, idx 1 → "Subtotals" label, rest → value if hasTotal
-    // ============================================================
-    _buildTotalCells(cols) {
-        return cols.map((col, idx) => ({
-            key:      col.colIndex,
-            isLabel:  idx === 1,
-            hasTotal: col.hasTotal,
-            value:    col.hasTotal ? (this._totals[col.totalKey] || 0) : ''
-        }));
-    }
-
-    // ============================================================
-    // HELPER — API name → human label fallback
-    // ============================================================
-    _apiToLabel(apiName) {
-        return apiName
-            .replace(/^c2g__/, '')
-            .replace(/__c$/, '')
-            .replace(/([A-Z])/g, ' $1')
-            .trim();
-    }
-
-    // ============================================================
-    // GETTER
-    // ============================================================
-    get totalLineItems() {
-        return this.tableData ? this.tableData.length : 0;
-    }
-
-    // ============================================================
-    // LIFECYCLE — attach resize listeners after columns render
-    // Always re-query _cols so reference stays current
-    // ============================================================
+    // ==========================================
+    // LIFECYCLE - SETUP RESIZE AFTER RENDER
+    // ==========================================
     renderedCallback() {
+        // renderedCallback fires every time component re-renders
+        // We only want to attach resize listeners ONCE
+        if (this._resizeInitialized) return;
+        this._resizeInitialized = true;
+
+        // Get all .col-resizer divs in the header
+        const resizers = this.template.querySelectorAll('.col-resizer');
+
+        // Get all <col> elements from <colgroup>
         this._cols = this.template.querySelectorAll('col');
 
-        if (this._resizeReady || this._cols.length === 0) return;
-
-        const resizers = this.template.querySelectorAll('.col-resizer');
-        if (resizers.length === 0) return;
-
-        this._resizeReady    = true;
+        // Bind mouse move and mouse up once
         this._boundMouseMove = this.onMouseMove.bind(this);
         this._boundMouseUp   = this.onMouseUp.bind(this);
 
-        resizers.forEach(r => r.addEventListener('mousedown', e => this.onMouseDown(e)));
+        // Attach mousedown to each resizer handle
+        resizers.forEach(resizer => {
+            resizer.addEventListener('mousedown', (e) => {
+                this.onMouseDown(e);
+            });
+        });
     }
 
-    // ============================================================
-    // RESIZE HANDLERS
-    // ============================================================
+    // ==========================================
+    // RESIZE - MOUSE DOWN
+    // Triggered when user clicks on a resizer
+    // ==========================================
     onMouseDown(e) {
+        // Prevent text selection while dragging
         e.preventDefault();
+
+        // Which column index is this resizer for
         this._activeColIndex = parseInt(e.target.dataset.colIndex, 10);
-        this._startX         = e.clientX;
-        const col            = this._cols[this._activeColIndex];
-        this._startWidth     = col.offsetWidth || parseInt(col.style.width, 10);
-        this._isResizing     = true;
+
+        // Record starting mouse X position
+        this._startX = e.clientX;
+
+        // Record starting column width
+        const col = this._cols[this._activeColIndex];
+        this._startWidth = col.offsetWidth || parseInt(col.style.width, 10);
+
+        // Set dragging flag
+        this._isResizing = true;
+
+        // Add active class to resizer for visual feedback
         e.target.classList.add('resizing');
-        document.body.style.cursor     = 'col-resize';
+
+        // Add cursor style to body so it stays col-resize
+        // even when mouse moves fast outside the resizer
+        document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+
+        // Listen on document for move and up
+        // so drag works even outside the table
         document.addEventListener('mousemove', this._boundMouseMove);
         document.addEventListener('mouseup',   this._boundMouseUp);
     }
 
+    // ==========================================
+    // RESIZE - MOUSE MOVE
+    // Triggered while dragging
+    // ==========================================
     onMouseMove(e) {
         if (!this._isResizing) return;
-        let newWidth = this._startWidth + (e.clientX - this._startX);
+
+        // How far has mouse moved from start
+        const deltaX = e.clientX - this._startX;
+
+        // New width = original width + delta
+        let newWidth = this._startWidth + deltaX;
+
+        // Enforce minimum column width of 40px
         if (newWidth < 40) newWidth = 40;
+
+        // Apply new width to the <col> element
         this._cols[this._activeColIndex].style.width = newWidth + 'px';
     }
 
+    // ==========================================
+    // RESIZE - MOUSE UP
+    // Triggered when user releases mouse
+    // ==========================================
     onMouseUp() {
         if (!this._isResizing) return;
-        this._isResizing     = false;
+
+        // Reset dragging flag
+        this._isResizing = false;
         this._activeColIndex = null;
-        document.body.style.cursor     = '';
+
+        // Restore cursor and selection
+        document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        this.template.querySelectorAll('.col-resizer').forEach(r => r.classList.remove('resizing'));
+
+        // Remove active class from all resizers
+        const resizers = this.template.querySelectorAll('.col-resizer');
+        resizers.forEach(r => r.classList.remove('resizing'));
+
+        // Remove document listeners - cleanup
         document.removeEventListener('mousemove', this._boundMouseMove);
         document.removeEventListener('mouseup',   this._boundMouseUp);
     }
 
+    // ==========================================
+    // LIFECYCLE - CLEANUP ON DESTROY
+    // ==========================================
     disconnectedCallback() {
+        // Safety cleanup if component is removed
+        // while dragging is in progress
         document.removeEventListener('mousemove', this._boundMouseMove);
         document.removeEventListener('mouseup',   this._boundMouseUp);
-        document.body.style.cursor     = '';
+        document.body.style.cursor = '';
         document.body.style.userSelect = '';
+    }
+
+    // ==========================================
+    // GETTER - Get cell value dynamically
+    // ==========================================
+    getCellValue(row, apiName) {
+        // Handle special computed fields for URLs and display names
+        if (apiName === 'c2g__Product__r.Name') return row.productName;
+        if (apiName === 'c2g__Dimension1__r.Name') return row.dim1;
+        if (apiName === 'c2g__Dimension2__r.Name') return row.dim2;
+        if (apiName === 'c2g__Dimension4__r.Name') return row.dim4;
+        if (apiName === 'Milestone__r.Name') return row.milestone;
+        if (apiName === 'c2g__TaxCode1__r.Name') return row.taxCode;
+        if (apiName === 'ffpsai__BillingEventItem__r.Name') return row.billingItem;
+        
+        // For regular fields, get the value
+        return row[apiName];
+    }
+
+    // ==========================================
+    // GETTER - Get URL for reference fields
+    // ==========================================
+    getCellUrl(row, apiName) {
+        if (apiName === 'c2g__Product__c') return row.productUrl;
+        if (apiName === 'c2g__Dimension1__c') return row.dim1Url;
+        if (apiName === 'c2g__Dimension2__c') return row.dim2Url;
+        if (apiName === 'c2g__Dimension4__c') return row.dim4Url;
+        if (apiName === 'Milestone__c') return row.milestoneUrl;
+        return null;
+    }
+
+    // ==========================================
+    // GETTER - Check if field is a reference that needs URL
+    // ==========================================
+    isReferenceField(apiName) {
+        return ['c2g__Product__c', 'c2g__Dimension1__c', 'c2g__Dimension2__c', 
+                'c2g__Dimension4__c', 'Milestone__c', 'Id', 'Name'].includes(apiName);
+    }
+
+    // ==========================================
+    // GETTER
+    // ==========================================
+    get totalLineItems() {
+        return this.data ? this.data.length : 0;
     }
 }

@@ -15,76 +15,99 @@
         <div class="table-wrapper">
             <table class="resizable-table" data-id="mainTable">
 
-                <!-- ═══════════════════════════════════════════
-                     COLGROUP — one <col> per column (dynamic)
-                     Driven by columnDefs so resize handles
-                     always match the actual column count.
-                ════════════════════════════════════════════ -->
+                <!-- Column Width Definitions - DYNAMIC -->
                 <colgroup>
-                    <template for:each={columnDefs} for:item="col">
-                        <col key={col.colIndex}
-                             data-col={col.colIndex}
-                             style="width: 120px" />
+                    <!-- Serial Number Column -->
+                    <col data-col="0"  style="width: 50px"/>
+                    
+                    <!-- Dynamic Columns from FieldSet -->
+                    <template for:each={columns} for:item="column" for:index="colIndex">
+                        <col key={column.apiName} data-col={colIndex + 1} style="width: 130px"/>
                     </template>
                 </colgroup>
 
-                <!-- ═══════════════════════════════════════════
-                     THEAD — dynamic headers from columnDefs
-                     Only columns returned by getFieldSetFields
-                     (+ fixed #, Line Item ID) appear here.
-                ════════════════════════════════════════════ -->
+                <!-- Table Header - DYNAMIC -->
                 <thead>
                     <tr class="slds-line-height_reset">
-                        <template for:each={columnDefs} for:item="col">
-                            <th key={col.colIndex}
-                                scope="col"
-                                data-col-index={col.colIndex}>
-                                <div class="th-content" title={col.label}>{col.label}</div>
-                                <div class="col-resizer" data-col-index={col.colIndex}></div>
+
+                        <!-- Serial Number Header -->
+                        <th scope="col" data-col-index="0">
+                            <div class="th-content" title="#">#</div>
+                            <div class="col-resizer" data-col-index="0"></div>
+                        </th>
+
+                        <!-- Dynamic Column Headers -->
+                        <template for:each={columns} for:item="column" for:index="colIndex">
+                            <th key={column.apiName} scope="col" data-col-index={colIndex + 1}>
+                                <div class="th-content" title={column.label}>{column.label}</div>
+                                <div class="col-resizer" data-col-index={colIndex + 1}></div>
                             </th>
                         </template>
+
                     </tr>
                 </thead>
 
                 <tbody>
+                    <!-- Dynamic Data Rows -->
+                    <template for:each={data} for:item="row">
+                        <tr key={row.Id} class="slds-hint-parent">
 
-                    <!-- ═══════════════════════════════════════
-                         DATA ROWS — each row's cells array
-                         was pre-resolved in JS (_buildRowCells)
-                         so HTML just iterates without any
-                         dynamic property access.
-                    ════════════════════════════════════════ -->
-                    <template for:each={tableData} for:item="row">
-                        <tr key={row.id} class="slds-hint-parent">
-                            <template for:each={row.cells} for:item="cell">
-                                <td key={cell.key} title={cell.display}>
-                                    <template if:true={cell.isLink}>
-                                        <a href={cell.href} target="_blank">{cell.display}</a>
-                                    </template>
-                                    <template if:false={cell.isLink}>
-                                        {cell.display}
-                                    </template>
-                                </td>
+                            <!-- Serial Number Cell -->
+                            <td title={row.serialNumber}>
+                                {row.serialNumber}
+                            </td>
+
+                            <!-- Dynamic Data Cells -->
+                            <template for:each={columns} for:item="column">
+                                <template if:true={column.isReference}>
+                                    <!-- Reference Field - Show as Link -->
+                                    <td key={column.apiName} title={getCellValue(row, column.apiName)}>
+                                        <template if:true={getCellUrl(row, column.apiName)}>
+                                            <a href={getCellUrl(row, column.apiName)} target="_blank">{getCellValue(row, column.apiName)}</a>
+                                        </template>
+                                        <template if:false={getCellUrl(row, column.apiName)}>
+                                            <template if:true={getCellValue(row, column.apiName)}>
+                                                {getCellValue(row, column.apiName)}
+                                            </template>
+                                            <template if:false={getCellValue(row, column.apiName)}>-</template>
+                                        </template>
+                                    </td>
+                                </template>
+
+                                <template if:false={column.isReference}>
+                                    <!-- Regular Field - Plain Text -->
+                                    <td key={column.apiName} title={getCellValue(row, column.apiName)}>
+                                        <template if:true={getCellValue(row, column.apiName)}>
+                                            {getCellValue(row, column.apiName)}
+                                        </template>
+                                        <template if:false={getCellValue(row, column.apiName)}>-</template>
+                                    </td>
+                                </template>
                             </template>
+
                         </tr>
                     </template>
 
-                    <!-- ═══════════════════════════════════════
-                         TOTALS ROW — only shows a value for
-                         columns that have a totalKey defined
-                         in FIELD_META. Other cells are blank.
-                         Second cell always shows "Subtotals".
-                    ════════════════════════════════════════ -->
+                    <!-- Totals Row - DYNAMIC -->
                     <tr class="totals-row">
-                        <template for:each={totalCells} for:item="cell">
-                            <td key={cell.key}>
-                                <template if:true={cell.isLabel}>
-                                    <b>Subtotals</b>
+                        <!-- Serial Number Cell (Empty) -->
+                        <td></td>
+                        
+                        <!-- Subtotal Label in First Column -->
+                        <template if:true={columns}>
+                            <td title="Subtotals"><b>Subtotals</b></td>
+                            
+                            <!-- Remaining Columns - Show Totals Only if Summable -->
+                            <template for:each={columns} for:item="column" for:index="colIndex">
+                                <template if:true={column.isSummable}>
+                                    <td key={column.apiName} title={totals[column.apiName]}>
+                                        <b>{totals[column.apiName]}</b>
+                                    </td>
                                 </template>
-                                <template if:true={cell.hasTotal}>
-                                    <b>{cell.value}</b>
+                                <template if:false={column.isSummable}>
+                                    <td key={column.apiName}></td>
                                 </template>
-                            </td>
+                            </template>
                         </template>
                     </tr>
 
